@@ -1,0 +1,28 @@
+Problema - — Selección de Modelo de Clustering Probabilístico con BIC
+Librería: numpy, sklearn.
+Contexto: Un equipo de astronomía está analizando datos fotométricos de estrellas (brillo en
+distintas bandas espectrales) y necesita agruparlas en poblaciones estelares. A diferencia de
+los métodos de clustering "duro" como KMeans (que asigna cada estrella a un solo grupo), se
+requiere un enfoque probabilístico que indique con qué probabilidad cada estrella pertenece a
+cada población, ya que las regiones de transición entre poblaciones son difusas. Además, no
+se conoce a priori cuántas poblaciones existen, por lo que se debe usar el Criterio de
+Información Bayesiano (BIC) para elegir el número óptimo de componentes.
+Función: seleccionar_gmm_optimo(X, rango_componentes, random_state=42)
+Especificaciones:
+- Recibir una matriz X (numpy array de forma (n_samples, n_features)), una lista
+rango_componentes con los valores candidatos de número de componentes (ej. [2, 3, 4, 5]), y
+un random_state para reproducibilidad.
+- Estandarizar X usando StandardScaler de sklearn.
+- Para cada valor k en rango_componentes, ajustar un GaussianMixture de sklearn.mixture con
+n_components=k, random_state=random_state, y calcular su BIC con el método .bic().
+- Seleccionar el k que produzca el menor BIC (mejor ajuste penalizado por complejidad). En
+caso de empate, elegir el k más pequeño.
+- Con el modelo óptimo ya ajustado, obtener las etiquetas duras (.predict()) y las
+probabilidades de pertenencia a cada cluster (.predict_proba()).
+- Retornar un diccionario con la información completa.
+Lo que debe retornar: Un dict con las claves:
+"mejor_k": entero con el número óptimo de componentes.
+"mejor_bic": float con el BIC del mejor modelo.
+"bic_por_k": diccionario {k: bic} para todos los k evaluados.
+"etiquetas": numpy array con las asignaciones duras de cada muestra.
+"probabilidades": numpy array de forma (n_samples, mejor_k) con la probabilidad de pertenencia a cada componente.

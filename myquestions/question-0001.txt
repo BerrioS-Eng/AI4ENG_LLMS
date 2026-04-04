@@ -1,0 +1,22 @@
+Problema — Explosión y Análisis de Etiquetas Múltiples
+Librerías: pandas, numpy.
+Contexto: Una plataforma de cursos online almacena en su base de datos un registro por curso, donde una columna
+contiene las etiquetas temáticas separadas por coma (ej: "python,machine_learning,estadística"). El equipo de
+producto necesita analizar la frecuencia de cada etiqueta individual y calcular un resumen por categoría principal
+del curso: cuántas etiquetas únicas utiliza en promedio cada categoría y cuál es la etiqueta más frecuente dentro de
+cada una.
+Función: analizar_etiquetas(df, categoria_col, etiquetas_col)
+Especificaciones:
+- Recibir un DataFrame df, el nombre de la columna de categoría del curso (categoria_col) y el nombre de la columna
+que contiene las etiquetas separadas por coma (etiquetas_col).
+- Separar las etiquetas de la columna etiquetas_col usando str.split(",") y explotar el resultado con .explode()
+para que cada etiqueta quede en su propia fila.
+- Limpiar espacios en blanco de las etiquetas resultantes con .str.strip().
+- Calcular la frecuencia global de cada etiqueta (cuántas veces aparece en total).
+- Agrupar por categoria_col y calcular para cada categoría: el número total de etiquetas (contando repeticiones), la
+cantidad de etiquetas únicas (.nunique()), y la etiqueta más frecuente dentro de esa categoría (la moda).
+- Retornar una tupla con dos elementos: el conteo global y el resumen por categoría.
+Lo que debe retornar: Una tupla (frecuencia_global, resumen_por_categoria) donde:
+- frecuencia_global: pd.Series con índice = nombre de etiqueta, valores = conteo entero, ordenada de mayor a menor.
+- resumen_por_categoria: pd.DataFrame con columnas ["categoria", "total_etiquetas", "etiquetas_unicas",
+"etiqueta_top"], ordenado alfabéticamente por categoria, con índice reiniciado.

@@ -1,0 +1,26 @@
+Problema — Diagnóstico Automatizado de Calidad de un Dataset para ML
+Librerías: pandas, numpy, sklearn.
+Contexto: Un equipo de ciencia de datos de una consultora recibe datasets de clientes muy diversos y antes de
+proponer cualquier modelo necesita generar un reporte de calidad estandarizado. Este diagnóstico identifica
+problemas comunes que podrían sabotear un modelo: columnas con demasiados valores faltantes, features casi
+constantes (varianza despreciable) que no aportan información, y pares de features altamente correlacionadas que
+generan redundancia. Actualmente este proceso se hace manualmente y quieren automatizarlo.
+Función: diagnosticar_dataset(df, target_col, umbral_varianza=0.01, umbral_correlacion=0.9)
+Especificaciones:
+- Recibir un DataFrame df, el nombre de la columna objetivo target_col, un umbral_varianza y un umbral_correlacion.
+- Separar las features numéricas (todas las columnas numéricas excepto target_col) del target.
+- Análisis de faltantes (Pandas): calcular el porcentaje de valores nulos por cada columna numérica, retornando un
+diccionario {columna: porcentaje}.
+- Detección de features cuasi-constantes (Sklearn): aplicar VarianceThreshold(threshold=umbral_varianza) sobre las
+features numéricas (rellenando NaN con la mediana antes para que el selector no falle) y obtener la lista de nombres
+de columnas que serían eliminadas por tener varianza menor al umbral.
+- Pares redundantes (Numpy/Pandas): calcular la matriz de correlación absoluta entre features numéricas, y extraer
+todos los pares (col_a, col_b) cuya correlación absoluta sea estrictamente mayor a umbral_correlacion, sin repetir
+pares (reportar solo el triángulo superior).
+- Retornar el reporte completo.
+Lo que debe retornar: Un dict con las claves:
+"porcentaje_nulos": dict {columna: float} con el % de nulos por columna (redondeado a 2 decimales).
+"features_cuasi_constantes": lista de strings con los nombres de las columnas eliminadas por baja varianza.
+"pares_redundantes": lista de tuplas (col_a, col_b, correlacion) donde correlacion es el valor absoluto redondeado a 4 decimales.
+"n_features_original": entero con la cantidad total de features numéricas analizadas.
+"n_features_utiles": entero = n_features_original menos las cuasi-constantes.

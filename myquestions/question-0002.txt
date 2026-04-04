@@ -1,0 +1,19 @@
+Problema - Matriz de Co-ocurrencia de Productos
+Librerías: pandas, numpy.
+Contexto: Un marketplace digital quiere implementar un sistema de recomendación sencillo basado en la regla
+"los clientes que compraron X también compraron Y". Para ello, dispone de un registro de transacciones donde
+cada fila vincula un identificador de transacción con un producto comprado. El primer paso es construir una
+matriz de co-ocurrencia: una tabla simétrica que contabiliza en cuántas transacciones dos productos distintos
+aparecieron juntos.
+Función: construir_coocurrencia(df, transaccion_col, producto_col)
+Especificaciones:
+- Recibir un DataFrame df con las columnas indicadas por transaccion_col (identificador de la transacción) y
+producto_col (nombre del producto comprado).
+- Realizar un self-merge del DataFrame consigo mismo por transaccion_col, generando todas las combinaciones de
+pares de productos que coexisten en la misma transacción.
+- Eliminar los pares donde el producto aparece consigo mismo (diagonal).
+- Construir una tabla de contingencia (con pd.crosstab o pivot_table) que cuente cuántas transacciones
+comparten cada par de productos.
+- Asegurar que la matriz sea simétrica y que la diagonal sea cero.
+- Ordenar filas y columnas alfabéticamente por nombre de producto.
+Lo que debe devolver: Un pd.DataFrame cuadrado y simétrico, donde filas y columnas son los nombres de los productos (ordenados alfabéticamente), los valores son enteros con la cantidad de transacciones compartidas, y la diagonal es cero.
