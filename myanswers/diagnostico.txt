@@ -1,0 +1,150 @@
+================================================================================
+DIAGNÓSTICO — limpiar_y_ordenar_estudiantes
+================================================================================
+Autor: Sebastian Andres Berrio Murillo (sebastian.berriom@udea.edu.co)
+Fecha: 2026-05-30
+
+--------------------------------------------------------------------------------
+1. SÍNTOMA OBSERVADO
+--------------------------------------------------------------------------------
+Al ejecutar la validación externa se obtiene:
+
+    Execution error: limpiar_y_ordenar_estudiantes() missing 3 required
+    positional arguments: 'df', 'nombre_col', and 'nota_col'
+
+Es importante notar QUÉ tipo de fallo es: NO es una aserción de que el
+DataFrame de salida sea distinto al esperado (eso sería un fallo de lógica).
+Es un TypeError lanzado por el intérprete de Python ANTES de que el cuerpo de
+la función llegue siquiera a ejecutarse. Es decir, el problema está en la
+INVOCACIÓN, no en la implementación.
+
+--------------------------------------------------------------------------------
+2. QUÉ SIGNIFICA TÉCNICAMENTE EN PYTHON
+--------------------------------------------------------------------------------
+CPython emite el mensaje "missing N required positional arguments" cuando una
+función con N parámetros obligatorios se llama proporcionando MENOS de N
+argumentos (sumando posicionales y por nombre). El mensaje lista exactamente
+cuáles parámetros quedaron sin asignar.
+
+La firma de la función es:
+
+    def limpiar_y_ordenar_estudiantes(df, nombre_col, nota_col): ...
+
+tiene 3 parámetros obligatorios. El error reporta los 3 como faltantes
+('df', 'nombre_col' y 'nota_col'). Esto solo puede ocurrir de UNA forma:
+
+    >>> la función fue invocada SIN NINGÚN argumento, equivalente a
+        limpiar_y_ordenar_estudiantes()
+
+Comprobación del razonamiento (qué pasaría con otras formas de llamada):
+  - func(input_dict)               -> "missing 2 ... 'nombre_col' and 'nota_col'"
+                                       (df queda asignado con el dict). NO coincide.
+  - func(**input_dict) con las
+    claves correctas {df, nombre_col, nota_col}
+                                    -> FUNCIONA, sin error. NO coincide.
+  - func(**input_dict) con claves
+    que no son esos nombres         -> "unexpected keyword argument". NO coincide.
+  - func(*input_dict.values())      -> FUNCIONA (3 valores posicionales). NO coincide.
+  - func()                          -> "missing 3 required positional
+                                       arguments". <<< COINCIDE EXACTAMENTE.
+
+Conclusión técnica: el validador está llamando a la función con CERO argumentos.
+
+--------------------------------------------------------------------------------
+3. CAUSA RAÍZ (OPINIÓN FUNDAMENTADA)
+--------------------------------------------------------------------------------
+El generador de casos de uso devuelve los datos como un DICCIONARIO:
+
+    input_dict = {"df": df, "nombre_col": "nombre", "nota_col": "nota"}
+    return input_dict, df_sorted
+
+Existe, por tanto, una DESCONEXIÓN entre cómo el generador EMPAQUETA la entrada
+(un único objeto dict) y cómo la función bajo prueba ESPERA recibirla (tres
+parámetros sueltos). El validador, al hacer de puente entre ambos, no está
+trasladando el contenido de `input_dict` hacia los parámetros de la función.
+
+La hipótesis más probable, ordenada por verosimilitud:
+
+  H1 (la más probable) — El validador asume una firma de UN solo parámetro.
+      Muchos arneses de autograding genéricos definen la convención:
+      "la función recibe el caso de uso completo como un único argumento"
+      (p. ej. `func(input_dict)` o `func(caso)`), y luego la función debe
+      desempaquetar internamente. Si además el arnés construye la llamada de
+      forma dinámica y el empaquetado del argumento falla (o se pasa una lista
+      vacía / se omite), termina invocando `func()` sin argumentos.
+      Evidencia a favor: el error es de invocación, no de lógica; el input se
+      entrega como un objeto compuesto (dict), no como argumentos sueltos.
+
+  H2 — El validador desempaqueta con ** pero el contenedor llega vacío.
+      `func(**{})` produce exactamente este TypeError. Esto ocurriría si el
+      arné s lee la entrada desde una clave/estructura que no encontró
+      (p. ej. esperaba input["args"] o input["kwargs"] y no existe), quedando
+      un diccionario vacío.
+
+  H3 — Cableado incorrecto generador<->función en el validador.
+      El arnés genera (input_dict, output) correctamente, pero al invocar la
+      solución NO le reenvía input_dict (bug de integración del propio
+      validador), llamando a la función "pelada".
+
+En las tres hipótesis el denominador común es el mismo y es lo relevante para
+actuar: EL CONTRATO DE INVOCACIÓN DEL VALIDADOR NO COINCIDE CON LA FIRMA
+EXIGIDA EN EL ENUNCIADO (df, nombre_col, nota_col).
+
+--------------------------------------------------------------------------------
+4. LA LÓGICA DE LA FUNCIÓN ES CORRECTA
+--------------------------------------------------------------------------------
+La implementación cumple el enunciado y NO es la fuente del error:
+
+    df_clean  = df.drop_duplicates(subset=[nombre_col])   # quita repetidos por nombre
+    df_sorted = df_clean.sort_values(by=nota_col, ascending=False)  # ordena nota desc
+    return df_sorted
+
+Esto replica EXACTAMENTE la lógica esperada del generador
+(drop_duplicates(subset=["nombre"]) + sort_values(by="nota", ascending=False)),
+por lo que, una vez la entrada se entregue correctamente, la salida coincidirá
+con el `output` esperado. El fallo es de ARNÉS/CONTRATO, no de algoritmo.
+
+--------------------------------------------------------------------------------
+5. CÓMO VERIFICARLO Y RESOLVERLO
+--------------------------------------------------------------------------------
+Verificación rápida (descarta que sea la lógica):
+
+    inp, out = generar_caso_de_uso_limpiar_y_ordenar_estudiantes()
+    resultado = limpiar_y_ordenar_estudiantes(**inp)   # desempaquetado por nombre
+    import pandas as pd
+    pd.testing.assert_frame_equal(resultado, out)      # pasa sin errores
+
+Acciones posibles, según quién controle el contrato:
+
+  A) Si el validador es FIJO y exige una función de un solo argumento que reciba
+     el caso de uso completo: adaptar la solución a esa convención, p. ej.
+
+         def limpiar_y_ordenar_estudiantes(df, nombre_col, nota_col):
+             # ... lógica real ...
+
+         def solucion(caso):              # adaptador para el arnés
+             return limpiar_y_ordenar_estudiantes(**caso)
+
+     o bien hacer que la función acepte el dict y desempaque internamente.
+
+  B) Si el contrato correcto es `func(**input_dict)` (lo natural dado que las
+     CLAVES del dict coinciden con los NOMBRES de los parámetros), entonces el
+     validador tiene un defecto (H2/H3) y la corrección es del lado del arnés:
+     debe invocar `limpiar_y_ordenar_estudiantes(**input_dict)`.
+
+  C) Confirmar con el responsable del autograder cuál es la convención de
+     invocación esperada (un argumento dict vs. desempaquetado por nombre vs.
+     posicional), ya que el enunciado fija la FIRMA pero no documenta CÓMO el
+     validador construye la llamada.
+
+--------------------------------------------------------------------------------
+6. RESUMEN EJECUTIVO
+--------------------------------------------------------------------------------
+El error "missing 3 required positional arguments" demuestra que el validador
+llama a la función SIN argumentos. La causa no es la lógica (correcta), sino un
+DESAJUSTE DE CONTRATO: el generador entrega la entrada empaquetada en un
+diccionario y el validador no la está traduciendo a los tres parámetros que la
+firma exige. La solución pasa por alinear la convención de invocación —ya sea
+adaptando la función a la firma que el arnés espera, ya sea corrigiendo el arnés
+para que desempaque el input_dict (func(**input_dict))—.
+================================================================================
